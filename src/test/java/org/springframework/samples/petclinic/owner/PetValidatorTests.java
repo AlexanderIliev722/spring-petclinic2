@@ -158,6 +158,7 @@ public class PetValidatorTests {
 			assertFalse(errors.hasFieldErrors("type"));
 		}
 
+
 		@ParameterizedTest
 		@ValueSource(strings = {"123", "Fluffy @ Home", "Müller", "O'Connor"})
 		void shouldAcceptExtraordinaryNames(String unusualName) {
@@ -172,19 +173,47 @@ public class PetValidatorTests {
 	}
 
 	// --- ЗАДАЧА 3 (isNew && type == null)
+	// We use booleans for clarity: isNew, hasType, expectError
 	@ParameterizedTest(name = "isNew={0}, hasType={1} -> Error Expected={2}")
 	@CsvSource({
-		"true,  false, 0",   // Нов любимец без Тип ГРЕШКА
-		"false, false, 1",  // Стар записан любимец (с ID) без Тип НЯМА ГРЕШКА
-		"true,  true,  1",  // Нов любимец с Тип  НЯМА ГРЕШКА
-		"false, true,  1"   // Стар записан любимец с Тип  НЯМА ГРЕШКА
+		"true,  false, true",   // 1. New Pet + No Type = ERROR (This is the specific check)
+		"false, false, false",  // 2. Existing Pet + No Type = NO Error
+		"true,  true,  false",  // 3. New Pet + Has Type = NO Error
+		"false, true,  false"   // 4. Existing Pet + Has Type = NO Error
 	})
+	void testValidateNewAndType(boolean isNew, boolean hasType, boolean expectError) {
+		//isNew true/false
+		if (isNew) {
+			pet.setId(null); // ID null means isNew() is true
+		} else {
+			pet.setId(1);    // ID set means isNew() is false
+		}
 
+		if (hasType) {
+			pet.setType(petType); // Set Valid Type -> true
+		} else {
+			pet.setType(null);    // Set Null Type -> false
+		}
+
+		// 3. Reset other fields to valid state so they dont interfere
+		pet.setName(petName);
+		pet.setBirthDate(petBirthDate);
+
+		// 4. Validate
+		petValidator.validate(pet, errors);
+
+		// 5. Assert
+		if (expectError) {
+			assertTrue(errors.hasFieldErrors("type"), "Should have error because Pet is New and Type is Null");
+		} else {
+			assertFalse(errors.hasFieldErrors("type"), "Should NOT have error for this combination");
+		}
+	}
+
+	// --- HELPER METHOD (Must be separate!) ---
 	private void preparePetInstance(String petName, PetType petType, LocalDate petBirthDate) {
 		pet.setName(petName);
 		pet.setType(petType);
 		pet.setBirthDate(petBirthDate);
 	}
-
-
 }

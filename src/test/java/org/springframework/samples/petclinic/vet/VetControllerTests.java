@@ -43,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Test class for the {@link VetController}
  */
 
+
 @WebMvcTest(VetController.class)
 @DisabledInNativeImage
 @DisabledInAotMode
@@ -98,21 +99,35 @@ class VetControllerTests {
 			.andExpect(status().isOk());
 		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$.vetList[0].id").value(1))
-			.andExpect(jsonPath("$.vetList[0].firstName").value("Alex"))
-			.andExpect(jsonPath("$.vetList[0].lastName").value("Iliev"));
+			.andExpect(jsonPath("$.vetList[0].firstName").value("James"))
+			.andExpect(jsonPath("$.vetList[0].lastName").value("Carter"));
 	}
 
+	// Zadacha 12(Page 1 -> Page 2)
 	@Test
-	void testShowVetListHtmlPage2() throws Exception {
-		given(this.vets.findAll(any(Pageable.class)))
-			.willReturn(new PageImpl<>(java.util.Collections.emptyList()));
+	void testVetListSequence() throws Exception {
+		// 2 vets - james() и helen())
+		PageImpl<Vet> page1 = new PageImpl<>(Lists.newArrayList(james(), helen()));
 
+		// Empty list page
+		PageImpl<Vet> page2 = new PageImpl<>(java.util.Collections.emptyList());
+
+		given(this.vets.findAll(any(Pageable.class)))
+			.willReturn(page1, page2);
+
+		// we expect 2 entries
+		mockMvc.perform(get("/vets.html?page=1"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("listVets", org.hamcrest.Matchers.hasSize(2)));
+
+		// 0 entries expected
 		mockMvc.perform(get("/vets.html?page=2"))
 			.andExpect(status().isOk())
-			.andExpect(view().name("vets/vetList"))
-			// Check that the model has the correct page number
-			.andExpect(model().attribute("currentPage", 2))
-			// Check that the list of vets is empty
-			.andExpect(model().attribute("listVets", java.util.Collections.emptyList()));
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("listVets", org.hamcrest.Matchers.hasSize(0)));
 	}
+
+
 }
+

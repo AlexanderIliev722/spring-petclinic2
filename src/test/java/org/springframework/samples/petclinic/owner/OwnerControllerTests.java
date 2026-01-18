@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -258,7 +259,6 @@ class OwnerControllerTests {
 
 		mockMvc.perform(get("/owners?page=2"))
 
-
 			// Redirects to findOwners if the result is empty!
 			.andExpect(status().isOk())
 			.andExpect(view().name("owners/findOwners"))
@@ -266,4 +266,37 @@ class OwnerControllerTests {
 			.andExpect(model().attributeHasFieldErrorCode("owner", "lastName", "notFound"));
 	}
 
+	// --- Zadacha 12 ---
+	@Test
+	void testOwnerListSequence() throws Exception {
+		// We need 2 owners. If we have only 1, the controller redirects to details (302) instead of showing the list (200).
+		Owner owner1 = new Owner();
+		owner1.setId(1);
+		owner1.setFirstName("George");
+		owner1.setLastName("Franklin");
+
+		Owner owner2 = new Owner();
+		owner2.setId(2);
+		owner2.setFirstName("Betty");
+		owner2.setLastName("Davis");
+
+		Page<Owner> page1 = new PageImpl<>(List.of(owner1, owner2)); // Page 1 has 2 owners
+		Page<Owner> page2 = new PageImpl<>(Collections.emptyList()); // Page 2 is empty
+
+		// First call returns page1, Second call returns page2
+		when(this.owners.findByLastNameStartingWith(anyString(), any(Pageable.class)))
+			.thenReturn(page1, page2);
+
+		//Page 1 (should find 2 owners -> Show List)
+		mockMvc.perform(get("/owners?page=1"))
+			.andExpect(status().isOk())                 // Now this will be 200
+			.andExpect(view().name("owners/ownersList"))
+			.andExpect(model().attribute("listOwners", hasSize(2)));
+
+		//Page 2 (should be empty -> Redirect to Find Form)
+		mockMvc.perform(get("/owners?page=2"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("owners/findOwners"))
+			.andExpect(model().attributeHasFieldErrorCode("owner", "lastName", "notFound"));
+	}
 }
